@@ -1,0 +1,15 @@
+
+experiment_name: flight-delay-prediction
+
+tracking_uri: https://dagshub.com/krishnapole90/flight-delay-prediction-mlops.mlflow
+
+run_name: xgboost-baseline
+
+model_dir: models
+
+train_path: data/processed/train.csv
+validation_path: data/processed/validation.csv
+
+test_path: data/processed/test.csv
+category_path: models/category_levels.json
+plots_dir: plots

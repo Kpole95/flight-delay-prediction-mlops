@@ -1,0 +1,20 @@
+name: xgboost_flight_delay
+
+parameters:
+  objective: binary:logistic
+  eval_metric: aucpr
+  tree_method: hist
+  max_depth: 8
+  eta: 0.05
+  subsample: 0.8
+  colsample_bytree: 0.8
+  min_child_weight: 5
+  lambda: 1.0
+  alpha: 0.0
+  max_bin: 256
+  seed: 42
+  nthread: 8
+
+training:
+  num_boost_round: 2000
+  early_stopping_rounds: 50

@@ -218,3 +218,31 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+# Project data - managed by DVC
+data/raw/
+data/interim/
+data/processed/
+
+# Model artifacts - managed by DVC
+models/
+
+# Experiment outputs
+mlruns/
+mlartifacts/
+
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+
+# Temporary files
+*.tmp
+*.bak
+
+# Local DVC configuration
+.dvc/config.local
+
+mlflow.db

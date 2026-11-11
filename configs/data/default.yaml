@@ -1,0 +1,3 @@
+source_path: data/interim/flight_delays_2024_2025.csv
+output_dir: data/processed
+chunksize: 200000
