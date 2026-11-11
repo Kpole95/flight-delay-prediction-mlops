@@ -26,19 +26,31 @@ SOURCE_COLUMNS = [
     CANCELLED_COLUMN,
 ]
 
-TRAIN_END = pd.Timestamp("2025-01-01")
-VALIDATION_END = pd.Timestamp("2025-04-01")
-TEST_END = pd.Timestamp("2025-07-01")
+# TRAIN_END = pd.Timestamp("2025-01-01")
+# VALIDATION_END = pd.Timestamp("2025-04-01")
+# TEST_END = pd.Timestamp("2025-07-01")
 
 SPLIT_NAMES = ("train", "validation", "test")
 
 
-def _get_split_dates(dates: pd.Series) -> dict[str, pd.Series]:
+def _get_split_dates(
+    dates: pd.Series,
+    train_end: str,
+    validation_end: str,
+    test_end: str,
+) -> dict[str, pd.Series]:
     """Return chronological split masks for a series of flight dates."""
+    train_end = pd.Timestamp(train_end)
+    validation_end = pd.Timestamp(validation_end)
+    test_end = pd.Timestamp(test_end)
+
+    if not train_end < validation_end < test_end:
+        raise ValueError("Split dates must be in chronological order")
+
     return {
-        "train": dates < TRAIN_END,
-        "validation": (dates >= TRAIN_END) & (dates < VALIDATION_END),
-        "test": (dates >= VALIDATION_END) & (dates < TEST_END),
+        "train": dates < train_end,
+        "validation": (dates >= train_end) & (dates < validation_end),
+        "test": (dates >= validation_end) & (dates < test_end),
     }
 
 
@@ -46,6 +58,9 @@ def _write_chunk(
     chunk: pd.DataFrame,
     output_paths: dict[str, Path],
     written_splits: set[str],
+    train_end: str,
+    validation_end: str,
+    test_end: str,
 ) -> dict[str, int]:
     """Filter a chunk and append eligible records to their split files."""
     chunk = chunk.copy()
@@ -77,7 +92,12 @@ def _write_chunk(
 
     eligible[TARGET_COLUMN] = eligible[TARGET_COLUMN].astype("int8")
 
-    split_masks = _get_split_dates(eligible[DATE_COLUMN])
+    split_masks = _get_split_dates(
+        eligible[DATE_COLUMN],
+        train_end,
+        validation_end,
+        test_end,
+    )
     counts = {}
 
     for split_name, mask in split_masks.items():
@@ -104,6 +124,9 @@ def prepare_splits(
     source_path: str | Path = "data/interim/flight_delays_2024_2025.csv",
     output_dir: str | Path = "data/processed",
     chunksize: int = 200_000,
+    train_end: str = "2025-01-01",
+    validation_end: str = "2025-04-01",
+    test_end: str = "2025-07-01",
 ) -> dict[str, int]:
     """
     Create chronological train, validation, and test datasets.
@@ -140,6 +163,9 @@ def prepare_splits(
                 chunk,
                 temporary_paths,
                 written_splits,
+                train_end,
+                validation_end,
+                test_end,
             )
 
             for split_name, count in counts.items():

@@ -1,10 +1,15 @@
 import json
 import subprocess
+import time
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import mlflow
 import pandas as pd
 import xgboost as xgb
+from mlflow.entities import Metric
+from mlflow.tracking import MlflowClient
+from omegaconf import OmegaConf
 
 from flight_delay_prediction.data import FEATURE_COLUMNS, TARGET_COLUMN
 from flight_delay_prediction.features import (
@@ -50,8 +55,14 @@ def train_model(config: dict) -> dict:
     training_config = config["training"]
     model_config = config["model"]
 
-    parameters = dict(model_config["parameters"])
-    training_settings = model_config["training"]
+    parameters = OmegaConf.to_container(
+        model_config["parameters"],
+        resolve=True,
+    )
+    training_settings = OmegaConf.to_container(
+        model_config["training"],
+        resolve=True,
+    )
 
     model_dir = Path(training_config["model_dir"])
     model_dir.mkdir(parents=True, exist_ok=True)
@@ -104,6 +115,13 @@ def train_model(config: dict) -> dict:
         mlflow.log_param("validation_rows", dvalidation.num_row())
         mlflow.log_param("git_commit", get_git_commit())
 
+        mlflow.log_text(
+            OmegaConf.to_yaml(config, resolve=True),
+            "config.yaml",
+        )
+
+        evals_result = {}
+
         model = xgb.train(
             params=parameters,
             dtrain=dtrain,
@@ -113,9 +131,38 @@ def train_model(config: dict) -> dict:
                 (dvalidation, "validation"),
             ],
             early_stopping_rounds=training_settings["early_stopping_rounds"],
+            evals_result=evals_result,
             verbose_eval=50,
         )
 
+        # Generate training and validation metric plots.
+        plots_dir = Path(training_config["plots_dir"])
+        plots_dir.mkdir(parents=True, exist_ok=True)
+
+        figure, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+        for axis, metric in zip(axes, ["logloss", "aucpr"]):
+            for dataset in ["train", "validation"]:
+                axis.plot(
+                    evals_result[dataset][metric],
+                    label=dataset.capitalize(),
+                )
+
+            axis.set_title(f"{metric.upper()} by Boosting Iteration")
+            axis.set_xlabel("Boosting Iteration")
+            axis.set_ylabel(metric.upper())
+            axis.legend()
+            axis.grid(True, alpha=0.3)
+
+        figure.tight_layout()
+
+        training_plot_path = plots_dir / "training_curves.png"
+        figure.savefig(training_plot_path, dpi=150)
+        plt.close(figure)
+
+        mlflow.log_artifact(str(training_plot_path))
+
+        # Save the trained model and categorical feature levels.
         model_path = model_dir / "flight_delay_model.json"
         category_path = model_dir / "category_levels.json"
 
@@ -124,12 +171,39 @@ def train_model(config: dict) -> dict:
         with category_path.open("w", encoding="utf-8") as file:
             json.dump(category_levels, file, indent=2)
 
+        # Log complete training and validation metric histories.
         best_iteration = model.best_iteration
         best_score = float(model.best_score)
+
+        metric_history = []
+        timestamp = int(time.time() * 1000)
+
+        for dataset in ["train", "validation"]:
+            for metric in ["logloss", "aucpr"]:
+                metric_name = f"{dataset}_{metric}"
+
+                for step, value in enumerate(evals_result[dataset][metric]):
+                    metric_history.append(
+                        Metric(
+                            key=metric_name,
+                            value=float(value),
+                            timestamp=timestamp,
+                            step=step,
+                        )
+                    )
+
+        client = MlflowClient()
+
+        for start in range(0, len(metric_history), 1000):
+            client.log_batch(
+                run_id=run.info.run_id,
+                metrics=metric_history[start : start + 1000],
+            )
 
         mlflow.log_metric("best_validation_aucpr", best_score)
         mlflow.log_metric("best_iteration", best_iteration)
 
+        # Log model artifacts.
         mlflow.log_artifact(str(model_path))
         mlflow.log_artifact(str(category_path))
 

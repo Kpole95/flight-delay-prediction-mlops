@@ -318,8 +318,14 @@ def evaluate_model(
     output_dir: str | Path = "plots",
     tracking_uri: str = "http://127.0.0.1:8080",
     experiment_name: str = "flight-delay-prediction",
+    threshold_selection_metric: str = "f1",
+    config_yaml: str | None = None,
 ) -> dict:
     """Select thresholds on validation data and evaluate on test data."""
+    if threshold_selection_metric != "f1":
+        raise ValueError(
+            f"Unsupported threshold selection metric: {threshold_selection_metric}"
+        )
     required_columns = [*FEATURE_COLUMNS, TARGET_COLUMN]
 
     validation_frame = pd.read_csv(
@@ -378,8 +384,15 @@ def evaluate_model(
     }
 
     thresholds = {
-        name: select_threshold(y_validation, probabilities)
-        for name, probabilities in validation_predictions.items()
+        "xgboost": select_threshold(
+            y_validation,
+            validation_predictions["xgboost"],
+        ),
+        "majority_baseline": 0.5,
+        "historical_airline_baseline": select_threshold(
+            y_validation,
+            validation_predictions["historical_airline_baseline"],
+        ),
     }
 
     # Save the selected XGBoost threshold for prediction.
@@ -435,6 +448,7 @@ def evaluate_model(
     mlflow.set_experiment(experiment_name)
 
     with mlflow.start_run(run_name="test-set-evaluation") as run:
+        mlflow.log_text(config_yaml, "config.yaml")
         mlflow.set_tags(
             {
                 "run_type": "evaluation",
@@ -450,7 +464,7 @@ def evaluate_model(
                 "validation_rows_for_threshold_selection": validation_rows,
                 "train_rows_for_baselines": len(train_frame),
                 "model_type": "XGBoost",
-                "threshold_selection_metric": "F1",
+                "threshold_selection_metric": threshold_selection_metric.upper(),
             }
         )
 

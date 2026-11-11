@@ -2,7 +2,9 @@ name: xgboost_flight_delay
 
 parameters:
   objective: binary:logistic
-  eval_metric: aucpr
+  eval_metric:
+    - logloss
+    - aucpr
   tree_method: hist
   max_depth: 8
   eta: 0.05

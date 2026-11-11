@@ -7,14 +7,14 @@ def majority_class_baseline(
     train_target: pd.Series,
     evaluation: pd.DataFrame,
 ) -> pd.Series:
-    """Return a constant probability based on the training class balance."""
+    """Return the majority class as a constant prediction score."""
     if train_target.empty:
         raise ValueError("Training target cannot be empty")
 
-    positive_rate = float(train_target.mean())
+    majority_class = int(train_target.mode().iloc[0])
 
     return pd.Series(
-        positive_rate,
+        float(majority_class),
         index=evaluation.index,
         dtype="float64",
     )

@@ -1,8 +1,6 @@
-
 experiment_name: flight-delay-prediction
 
-tracking_uri: https://dagshub.com/krishnapole90/flight-delay-prediction-mlops.mlflow
-
+tracking_uri: ${oc.env:MLFLOW_TRACKING_URI,http://127.0.0.1:8080}
 run_name: xgboost-baseline
 
 model_dir: models

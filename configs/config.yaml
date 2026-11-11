@@ -2,4 +2,5 @@ defaults:
   - data: default
   - model: xgboost
   - training: default
+  - metrics: default
   - _self_

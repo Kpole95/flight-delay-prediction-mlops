@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 from fire import Fire
 from hydra import compose, initialize_config_dir
+from omegaconf import OmegaConf
 
 from flight_delay_prediction.data import prepare_splits
 from flight_delay_prediction.download import download_data
@@ -44,12 +45,23 @@ def prepare():
     download_data()
 
     script = Path(__file__).resolve().parent.parent / "scripts" / "prepare_dataset.py"
-    subprocess.run([sys.executable, str(script)], check=True)
+    subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            str(Path(config.data.raw_data_dir).resolve()),
+            str(Path(config.data.prepared_dataset_path).resolve()),
+        ],
+        check=True,
+    )
 
     return prepare_splits(
         source_path=config.data.source_path,
         output_dir=config.data.output_dir,
         chunksize=config.data.chunksize,
+        train_end=config.data.split_dates.train_end,
+        validation_end=config.data.split_dates.validation_end,
+        test_end=config.data.split_dates.test_end,
     )
 
 
@@ -96,6 +108,8 @@ def evaluate():
         tracking_uri=config.training.tracking_uri,
         experiment_name=config.training.experiment_name,
         validation_path=config.training.validation_path,
+        threshold_selection_metric=config.metrics.threshold_selection_metric,
+        config_yaml=OmegaConf.to_yaml(config, resolve=True),
     )
 
     print(results)

@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import pytest
 
 from flight_delay_prediction.evaluate import (
@@ -62,3 +63,20 @@ def test_select_threshold_maximizes_f1():
     threshold = select_threshold(y_true, probabilities)
 
     assert threshold == pytest.approx(0.6)
+
+
+def test_majority_baseline_uses_fixed_threshold():
+    from flight_delay_prediction.baselines import majority_class_baseline
+
+    train_target = pd.Series([0, 0, 0, 1, 1])
+    evaluation = pd.DataFrame(index=[0, 1, 2])
+
+    predictions = majority_class_baseline(train_target, evaluation)
+    threshold = 0.5
+
+    assert threshold == 0.5
+    assert (predictions.to_numpy() >= threshold).tolist() == [
+        False,
+        False,
+        False,
+    ]

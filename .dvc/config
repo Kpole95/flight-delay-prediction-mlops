@@ -1,0 +1,4 @@
+['remote "data_storage"']
+    url = ../../flight-delay-dvc-storage/data
+['remote "model_storage"']
+    url = ../../flight-delay-dvc-storage/models

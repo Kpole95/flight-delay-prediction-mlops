@@ -1,0 +1,2 @@
+threshold_selection_metric: f1
+# default_threshold: 0.5

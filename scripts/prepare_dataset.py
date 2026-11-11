@@ -1,14 +1,12 @@
 import csv
 import io
+import sys
 import zipfile
 from datetime import datetime
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw" / "monthly"
-OUTPUT_FILE = PROJECT_ROOT / "data" / "interim" / "flight_delays_2024_2025.csv"
-
 DATE_COLUMN = "FlightDate"
+
 EXPECTED_MONTHS = {
     (year, month)
     for year, months in (
@@ -19,9 +17,9 @@ EXPECTED_MONTHS = {
 }
 
 
-def get_monthly_files() -> list[Path]:
+def get_monthly_files(raw_data_dir: Path) -> list[Path]:
     files = sorted(
-        RAW_DATA_DIR.glob("*.zip"),
+        raw_data_dir.glob("*.zip"),
         key=lambda path: tuple(map(int, path.stem.split("_"))),
     )
 
@@ -47,9 +45,15 @@ def get_csv_name(archive: zipfile.ZipFile, zip_path: Path) -> str:
     return csv_files[0]
 
 
-def prepare_dataset() -> None:
-    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    temp_file = OUTPUT_FILE.with_suffix(".tmp")
+def prepare_dataset(
+    raw_data_dir: str | Path,
+    output_file: str | Path,
+) -> None:
+    raw_data_dir = Path(raw_data_dir)
+    output_file = Path(output_file)
+
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    temp_file = output_file.with_suffix(".tmp")
 
     total_rows = 0
     reference_header = None
@@ -59,7 +63,7 @@ def prepare_dataset() -> None:
         with temp_file.open("w", encoding="utf-8", newline="") as output:
             writer = csv.writer(output)
 
-            for zip_path in get_monthly_files():
+            for zip_path in get_monthly_files(raw_data_dir):
                 year, month = map(int, zip_path.stem.split("_"))
                 month_rows = 0
                 first_date = None
@@ -145,7 +149,7 @@ def prepare_dataset() -> None:
                     f"{first_date.date()} to {last_date.date()}"
                 )
 
-        temp_file.replace(OUTPUT_FILE)
+        temp_file.replace(output_file)
 
     except Exception:
         temp_file.unlink(missing_ok=True)
@@ -153,9 +157,12 @@ def prepare_dataset() -> None:
 
     print("\nDataset preparation completed.")
     print(f"Total records: {total_rows:,}")
-    print(f"Output: {OUTPUT_FILE}")
-    print(f"Size: {OUTPUT_FILE.stat().st_size / (1024**3):.2f} GB")
+    print(f"Output: {output_file}")
+    print(f"Size: {output_file.stat().st_size / (1024**3):.2f} GB")
 
 
 if __name__ == "__main__":
-    prepare_dataset()
+    prepare_dataset(
+        raw_data_dir=sys.argv[1],
+        output_file=sys.argv[2],
+    )

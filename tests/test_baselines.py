@@ -7,14 +7,13 @@ from flight_delay_prediction.baselines import (
 )
 
 
-def test_majority_class_baseline_uses_training_delay_rate():
+def test_majority_class_baseline_predicts_majority_class():
     train_target = pd.Series([0, 0, 0, 1, 1])
     evaluation = pd.DataFrame(index=[10, 20, 30])
 
     predictions = majority_class_baseline(train_target, evaluation)
 
-    assert len(predictions) == 3
-    assert predictions.tolist() == pytest.approx([0.4, 0.4, 0.4])
+    assert predictions.tolist() == [0.0, 0.0, 0.0]
     assert predictions.index.tolist() == [10, 20, 30]
 
 

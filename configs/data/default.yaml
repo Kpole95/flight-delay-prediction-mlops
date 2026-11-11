@@ -1,3 +1,11 @@
 source_path: data/interim/flight_delays_2024_2025.csv
 output_dir: data/processed
 chunksize: 200000
+
+raw_data_dir: data/raw/monthly
+prepared_dataset_path: data/interim/flight_delays_2024_2025.csv
+
+split_dates:
+  train_end: "2025-01-01"
+  validation_end: "2025-04-01"
+  test_end: "2025-07-01"
