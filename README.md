@@ -174,7 +174,7 @@ Install pre-commit hooks:
 uv run pre-commit install
 ```
 
-## Run the Project
+## Train
 
 Training the model:
 
